@@ -31,10 +31,13 @@ export default function AnomalyChart({ data }) {
       
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[13px] font-semibold text-primary">Anomaly Detection Timeline (Live)</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-[13px] font-semibold text-primary">24h City Activity Pattern</h3>
+          <span className="text-[10px] font-medium text-primary-muted bg-bg-inner border border-[#ffffff10] px-2 py-0.5 rounded-full">MODELED</span>
+        </div>
         <div className="flex items-center gap-3">
-          <LegendItem color="bg-semantic-red" label="AQI" />
-          <LegendItem color="bg-semantic-purple" label="Social" />
+          <LegendItem color="bg-semantic-red" label="Air Quality" />
+          <LegendItem color="bg-semantic-purple" label="Reports" />
           <LegendItem color="bg-semantic-yellow" label="Traffic" />
         </div>
       </div>
@@ -103,11 +106,11 @@ export default function AnomalyChart({ data }) {
                     <div className="text-[11px] font-mono text-primary-muted mb-2">{time}</div>
                     
                     <div className="flex flex-col gap-1.5">
-                      <TooltipRow color="bg-semantic-red" label="AQI Anomalies" val={aqi} />
-                      <TooltipRow color="bg-semantic-yellow" label="Traffic Spike" val={traffic} />
-                      <TooltipRow color="bg-semantic-purple" label="Social Signals" val={social} />
+                      <TooltipRow color="bg-semantic-red" label="Air Quality Events" val={aqi} />
+                      <TooltipRow color="bg-semantic-yellow" label="Traffic Activity" val={traffic} />
+                      <TooltipRow color="bg-semantic-purple" label="Citizen Reports" val={social} />
                     </div>
-                    {total === 0 && <div className="text-[11px] text-primary italic mt-1">No anomalies detected</div>}
+                    {total === 0 && <div className="text-[11px] text-primary italic mt-1">No activity this hour</div>}
                   </motion.div>
                 )}
               </AnimatePresence>

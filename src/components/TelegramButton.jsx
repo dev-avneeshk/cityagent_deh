@@ -13,7 +13,7 @@ function TelegramIcon({ size = 16 }) {
   );
 }
 
-export default function TelegramButton({ city, data, alerts }) {
+export default function TelegramButton({ city, data, alerts, intel }) {
   const [status, setStatus]     = useState('idle'); // idle | sending | sent | error
   const [errorMsg, setErrorMsg] = useState('');
   const [countdown, setCountdown] = useState(AUTO_INTERVAL_MS / 1000);
@@ -25,7 +25,7 @@ export default function TelegramButton({ city, data, alerts }) {
     setStatus('sending');
     setErrorMsg('');
     try {
-      await sendTelegramUpdate(city, data, alerts);
+      await sendTelegramUpdate(city, data, alerts, intel);
       setStatus('sent');
       setCountdown(AUTO_INTERVAL_MS / 1000); // reset countdown
       setTimeout(() => setStatus('idle'), 3000);
@@ -50,7 +50,7 @@ export default function TelegramButton({ city, data, alerts }) {
 
     // Auto-send trigger
     const send = setInterval(() => {
-      sendTelegramUpdate(city, data, alerts).catch(() => {});
+      sendTelegramUpdate(city, data, alerts, intel).catch(() => {});
       setStatus('sent');
       setTimeout(() => setStatus('idle'), 2000);
     }, AUTO_INTERVAL_MS);

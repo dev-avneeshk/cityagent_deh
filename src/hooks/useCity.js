@@ -6,7 +6,7 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
 
-const DEFAULT_CITY = { name: 'Dehradun', state: 'Uttarakhand', lat: 30.3165, lon: 78.0322 };
+const DEFAULT_CITY = { name: 'Dehradun', state: 'Uttarakhand', lat: 30.3165, lon: 78.0322, newsCity: 'Dehradun' };
 
 export function useCity() {
   const [city, setCity] = useState(DEFAULT_CITY);
@@ -34,7 +34,9 @@ export function useCity() {
           const d = r.data;
           const name = d.city || d.locality || d.principalSubdivision || 'Your Location';
           const state = d.principalSubdivision || '';
-          setCity({ name, state, lat: latitude, lon: longitude });
+          // newsCity: prefer the city-level name for meaningful news results
+          const newsCity = d.city || d.locality || name;
+          setCity({ name, state, lat: latitude, lon: longitude, newsCity });
         } catch {
           // Fallback: use coords even if reverse geocoding fails
           setCity({ name: 'Current Location', state: '', lat: latitude, lon: longitude });
@@ -69,11 +71,18 @@ export function useCity() {
 
   // ── Select a city from search results ───────────────────
   const selectCity = useCallback((result) => {
+    // newsCity = the broader city/state for news context.
+    // Open-Meteo hierarchy: admin1=state, admin2=district, admin3=city/municipality
+    // "Bollaram" → admin3="Hyderabad" or admin1="Telangana"; we pick admin3 || admin1
+    // "Rajpur Road" → admin3="Dehradun" which is exactly what we want
+    // If the locality name IS the city (e.g. "Dehradun" directly), newsCity === name, no dupe query
+    const newsCity = result.admin3 || result.admin1 || result.name;
     setCity({
       name: result.name,
       state: result.admin1 || result.country || '',
       lat: result.latitude,
       lon: result.longitude,
+      newsCity,
     });
     setLocationError(null);
   }, []);

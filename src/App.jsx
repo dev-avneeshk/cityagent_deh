@@ -1,26 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import StatCard from './components/StatCard';
 import MetricCard from './components/MetricCard';
 import AnomalyChart from './components/AnomalyChart';
-import Pipeline from './components/Pipeline';
+import RiskIntelligence from './components/RiskIntelligence';
 import AQIGauge from './components/AQIGauge';
 import AlertFeed from './components/AlertFeed';
 import MapPanel from './components/MapPanel';
+import NewsFeed from './components/NewsFeed';
 import { Wind, Briefcase, CloudRain, MessageSquare, Construction } from 'lucide-react';
+import { deriveUrbanIntelligence } from './data/mockData';
 import { useCity } from './hooks/useCity';
 import ChatBot from './components/ChatBot';
 
 import {
   fetchAQI, fetchWeather, fetchFlood, fetchTraffic,
   fetchSocialSignals, fetchSystemStats, fetchAnomalies,
-  fetchAlerts, connectAlertSocket
 } from './api/cityagent';
+import { fetchNews } from './api/newsApi';
+import { fetchLiveAlerts } from './api/alertsApi';
 
 function App() {
   const [data, setData] = useState(null);
   const [alerts, setAlerts] = useState([]);
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activePage, setActivePage] = useState('overview');
@@ -52,26 +57,20 @@ function App() {
 
       // Step 2: Use real AQI value to seed city-specific mock data
       const aqiValue = aqi?.value ?? 60;
-      const [social, anomalies, alertsResult] = await Promise.all([
+      const parent = city.newsCity || '';
+      const [social, anomalies, liveAlerts] = await Promise.all([
         fetchSocialSignals(cityName, aqiValue),
         fetchAnomalies(cityName, aqiValue),
-        fetchAlerts(cityName, aqiValue),
+        fetchLiveAlerts(cityName, parent, { aqi, flood, weather }),
       ]);
 
       if (!cancelled) {
-        // Give alerts globally unique IDs (prefix with city hash) to prevent React key collisions
-        const cityPrefix = cityName.replace(/\s+/g, '').slice(0, 4).toUpperCase();
-        const uniqueAlerts = alertsResult.alerts.map((a, i) => ({
-          ...a,
-          id: `${cityPrefix}-${i}`,
-        }));
         const mergedStats = {
           ...stats,
-          // anomaliesToday = number of alerts for easy sub-label math
-          anomaliesToday: uniqueAlerts.length,
+          anomaliesToday: liveAlerts.length,
         };
         setData({ aqi, weather, flood, traffic, social, stats: mergedStats, anomalies });
-        setAlerts(uniqueAlerts);
+        setAlerts(liveAlerts);
         setLoading(false);
         setRefreshing(false);
       }
@@ -87,21 +86,36 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city.lat, city.lon]);
 
-  // WebSocket (mock) for live alerts — only runs when not actively refreshing
+  // News feed — fetches for BOTH the locality (e.g. "Bollaram") AND the
+  // parent city (e.g. "Telangana"), merges them, and deduplicates.
+  // Cache strategy: stale-while-revalidate — returns cache instantly,
+  // refreshes silently in background when stale (15 min threshold).
+  // The setInterval here only triggers the staleness check; actual network
+  // calls only happen when the cache is truly old.
   useEffect(() => {
-    const socket = connectAlertSocket((newAlert) => {
-      setRefreshing(prev => {
-        if (prev) return prev;  // skip stale websocket alerts during city refresh
-        return prev;
-      });
-      setAlerts(prev => {
-        // Avoid duplicate keys — check if same id already exists
-        if (prev.some(a => a.id === newAlert.id)) return prev;
-        return [{ ...newAlert, id: `WS-${newAlert.id}` }, ...prev.slice(0, 9)];
-      });
-    });
-    return () => socket.close();
-  }, []);
+    let cancelled = false;
+    const locality = city.name;
+    const parent   = city.newsCity || '';
+
+    const onUpdate = (fresh) => { if (!cancelled) setNews(fresh); };
+
+    // Clear old city's articles and show skeleton while fetching for the new city
+    setNews([]);
+    setNewsLoading(true);
+
+    fetchNews(locality, parent, { onUpdate })
+      .then(articles => { if (!cancelled) { setNews(articles); setNewsLoading(false); } })
+      .catch(() => { if (!cancelled) setNewsLoading(false); });
+
+    // Periodically trigger staleness check — newsApi handles deduplication
+    const interval = setInterval(() => {
+      fetchNews(locality, parent, { onUpdate }).catch(() => {});
+    }, 15 * 60_000);
+
+    return () => { cancelled = true; clearInterval(interval); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city.name, city.newsCity]);
+
 
   if (loading || !data) {
     return (
@@ -132,6 +146,7 @@ function App() {
           onSelectCity={selectCity}
           data={data}
           alerts={alerts}
+          intel={deriveUrbanIntelligence(data.aqi, data.weather, data.flood)}
         />
 
         {activePage === 'overview' ? (
@@ -186,8 +201,8 @@ function App() {
               />
               <MetricCard
                 title="Social Signals" value={data.social.signalCount} unit="signals"
-                label={`${city.name} · Twitter ${data.social.sources?.twitter ?? 0} + Reddit ${data.social.sources?.reddit ?? 0} · MOCK`}
-                delta="MOCK" deltaType="neutral" sparkData={data.social.trend} sparkColor="#a855f7"
+                label={`${city.name} · ${data.social.sources?.news ?? data.social.sources?.reddit ?? data.social.signalCount} signals · ${data.social._source === 'LIVE' ? 'LIVE' : 'MOCK'}`}
+                delta={data.social._source === 'LIVE' ? 'LIVE' : 'MOCK'} deltaType="neutral" sparkData={data.social.trend} sparkColor="#a855f7"
                 icon={<MessageSquare size={16} />} iconBg="rgba(168,85,247,0.12)" delay={0.40}
               />
             </div>
@@ -200,7 +215,7 @@ function App() {
                   <AnomalyChart data={data.anomalies} />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 h-auto lg:h-[300px]">
-                  <Pipeline status={data.stats.pipelineStatus} />
+                  <RiskIntelligence intel={deriveUrbanIntelligence(data.aqi, data.weather, data.flood)} delay={0.45} />
                   <div className="h-[300px] lg:h-auto"><MapPanel city={city} aqiValue={data.aqi.value} /></div>
                 </div>
               </div>
@@ -218,6 +233,11 @@ function App() {
                   <AlertFeed alerts={alerts} />
                 </div>
               </div>
+            </div>
+
+            {/* ROW 4: NEWS FEED */}
+            <div className="mt-3">
+              <NewsFeed articles={news} cityName={city.name} loading={newsLoading} />
             </div>
 
           </div>

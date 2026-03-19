@@ -16,3 +16,9 @@ venv/
 # Vite / Build
 *.local
 .vercel
+
+# Claude Code settings
+.claude/
+
+# Stale files
+README.old.md

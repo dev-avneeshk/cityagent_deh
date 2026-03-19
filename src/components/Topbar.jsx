@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MapPin, Search, Loader, X } from 'lucide-react';
 import TelegramButton from './TelegramButton';
 
-export default function Topbar({ city, locating, locationError, onDetectLocation, onSearchCities, onSelectCity, data, alerts }) {
+export default function Topbar({ city, locating, locationError, onDetectLocation, onSearchCities, onSelectCity, data, alerts, intel }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -174,7 +174,7 @@ export default function Topbar({ city, locating, locationError, onDetectLocation
       <div className="font-mono text-[12px] text-primary-muted shrink-0">{clock}</div>
 
       {/* Telegram update button */}
-      <TelegramButton city={city} data={data} alerts={alerts ?? []} />
+      <TelegramButton city={city} data={data} alerts={alerts ?? []} intel={intel} />
 
       {/* Live badge */}
       <div className="flex items-center gap-1.5 shrink-0">

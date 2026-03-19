@@ -2,7 +2,7 @@
 // CityAgent AI — Llama 3.1 8B via NVIDIA NIM
 // ============================================================
 
-import { dehradunZones } from '../data/mockData';
+import { dehradunZones, dehradunLocalities } from '../data/mockData';
 
 const KIMI_API_URL = '/api/kimi';
 const KIMI_API_KEY = import.meta.env.VITE_KIMI_API_KEY || '';
@@ -37,8 +37,13 @@ export function buildCityContext(city, data, alerts, userCoords = null, userLocD
   const criticals = alerts.filter(a => a.severity === 'critical' || a.severity === 'high').slice(0, 3);
 
   const zones = dehradunZones?.length
-    ? `Zone AQI: ${dehradunZones.map(z => `${z.name} ${z.aqi}(${z.status})`).join(', ')}`
+    ? `Monitored zone AQI: ${dehradunZones.map(z => `${z.name} ${z.aqi}(${z.status})`).join(', ')}`
     : `Overall AQI: ${aqi.value}`;
+
+  // Build locality knowledge: name → distance + description (condensed for prompt)
+  const localityIndex = dehradunLocalities?.length
+    ? dehradunLocalities.map(l => `${l.name}(${l.distKm}km,${l.type})`).join('; ')
+    : '';
 
   // Distance from user to city center (rough km)
   const userLocationLine = userCoords
@@ -59,7 +64,14 @@ export function buildCityContext(city, data, alerts, userCoords = null, userLocD
       })()
     : null;
 
-  return `CityAgent AI — ${city.name} live dashboard. Answer concisely and directly using only the data below.
+  // Find locality details for a specific name query (used for existence checks)
+  const findLocality = (name) => {
+    if (!dehradunLocalities?.length || !name) return null;
+    const q = name.toLowerCase().replace(/\s+/g, '');
+    return dehradunLocalities.find(l => l.name.toLowerCase().replace(/\s+/g, '').includes(q) || q.includes(l.name.toLowerCase().replace(/\s+/g, '')));
+  };
+
+  return `CityAgent AI — ${city.name} live dashboard. Answer concisely and directly using the data below.
 ${userLocationLine ? `\n${userLocationLine}` : ''}
 AQI ${aqi.value} (${aqi.category}), PM2.5 ${aqi.components?.pm25}µg/m³, PM10 ${aqi.components?.pm10}µg/m³, dominant: ${aqi.dominantPollutant}
 ${zones}
@@ -69,7 +81,17 @@ Traffic: ${traffic.congestionLevel} at ${traffic.hotspot}, ${traffic.currentSpee
 Alerts (${alerts.length}): ${criticals.map(a => `[${a.severity}] ${a.message}`).join(' | ') || 'none critical'}
 Social: ${social.signalCount} signals, top issues: ${social.topKeywords?.slice(0, 4).join(', ')}
 
-Rules: Only use the data above. Never say "data not provided" if an answer can be inferred. Give direct answers in 2-4 sentences. When user GPS is available, reference their nearest zone and distance.`;
+CITY GEOGRAPHY — All known localities in Dehradun district (name, distance from Clock Tower, type):
+${localityIndex}
+
+Locality details (for existence/info queries):
+${dehradunLocalities?.map(l => `• ${l.name} — ${l.distKm}km from centre, ${l.type}: ${l.desc}`).join('\n') || ''}
+
+Rules:
+- If asked whether an area/locality EXISTS in Dehradun, search the locality list above and confirm with its distance and description. NEVER say an area doesn't exist if it is in the list above.
+- For areas NOT in the list, say "I don't have this locality in my Dehradun database — it may be a very small village or outside the district."
+- For locality-specific AQI/weather, use city-wide data as a baseline and note that the nearest monitored zone is the closest reference.
+- Give direct answers in 2-4 sentences. When user GPS is available, reference their nearest zone and distance.`;
 }
 
 // ── Streaming chat ─────────────────────────────────────────────────────────
