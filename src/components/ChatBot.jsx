@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Bot, User, ChevronDown, Sparkles, Maximize2, Minimize2, MapPin, Navigation, LocateFixed } from 'lucide-react';
+import { X, Send, Bot, User, ChevronDown, Sparkles, Maximize2, Minimize2, MapPin, Navigation, LocateFixed, Mic, MicOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { streamKimiChat, buildCityContext, getSuggestedQuestions, checkRateLimit } from '../api/kimiChat';
 import { fetchAQI, fetchWeather } from '../api/cityagent';
@@ -44,9 +44,14 @@ export default function ChatBot({ city, data, alerts }) {
   const [userLocData, setUserLocData]     = useState(null);   // { aqi, weather } fetched for exact GPS
   const [locStatus, setLocStatus]         = useState('idle'); // idle | fetching | granted | denied
   const [pendingQuestion, setPendingQuestion] = useState(null); // question waiting for location
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
-  const abortRef  = useRef(null);
+  const [listening, setListening]   = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState(''); // interim transcript shown while recording
+  const bottomRef      = useRef(null);
+  const inputRef       = useRef(null);
+  const abortRef       = useRef(null);
+  const recognitionRef = useRef(null);
+  const messagesRef    = useRef(messages); // always mirrors messages state
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   const suggested = getSuggestedQuestions(data, alerts ?? []);
 
@@ -59,10 +64,11 @@ export default function ChatBot({ city, data, alerts }) {
   }, [open]);
 
   // Core stream function — takes already-built history and optional coord overrides
-  const streamReply = useCallback(async (history, coords, locData) => {
+  const streamReply = useCallback(async (history, coords, locData, voice = false) => {
     setStreaming(true);
     setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-    const systemPrompt = buildCityContext(city, data, alerts ?? [], coords, locData);
+    const systemPrompt = buildCityContext(city, data, alerts ?? [], coords, locData)
+      ;
     try {
       const gen = streamKimiChat(
         history.map(m => ({ role: m.role, content: m.content })),
@@ -86,7 +92,7 @@ export default function ChatBot({ city, data, alerts }) {
     }
   }, [city, data, alerts]);
 
-  const sendMessage = useCallback(async (text) => {
+  const sendMessage = useCallback(async (text, { voice = false } = {}) => {
     const userText = text.trim();
     if (!userText || streaming) return;
 
@@ -107,7 +113,7 @@ export default function ChatBot({ city, data, alerts }) {
     }
 
     setMessages(history);
-    await streamReply(history, userCoords, userLocData);
+    await streamReply(history, userCoords, userLocData, voice);
   }, [messages, streaming, userCoords, userLocData, streamReply]);
 
   // Called when user taps "Allow" on the inline location prompt
@@ -135,26 +141,19 @@ export default function ChatBot({ city, data, alerts }) {
           setUserLocData(locData);
         } catch { /* fall back to city data */ }
 
-        // Remove the prompt bubble, keep the user message, then stream reply
-        const question = pendingQuestion;
+        // Remove the prompt bubble, then stream reply outside the updater
         setPendingQuestion(null);
-        setMessages(prev => {
-          const withoutPrompt = prev.filter(m => m.role !== 'location-prompt');
-          streamReply(withoutPrompt, coords, locData);
-          return withoutPrompt;
-        });
+        const withoutPrompt = messagesRef.current.filter(m => m.role !== 'location-prompt');
+        setMessages(withoutPrompt);
+        streamReply(withoutPrompt, coords, locData);
       },
       (err) => {
         setLocStatus('denied');
         setError(err.code === 1 ? 'Location denied. Enable it in browser settings.' : 'Could not get your location.');
-        // Fall back: answer with city data
-        const question = pendingQuestion;
         setPendingQuestion(null);
-        setMessages(prev => {
-          const withoutPrompt = prev.filter(m => m.role !== 'location-prompt');
-          streamReply(withoutPrompt, null, null);
-          return withoutPrompt;
-        });
+        const withoutPrompt = messagesRef.current.filter(m => m.role !== 'location-prompt');
+        setMessages(withoutPrompt);
+        streamReply(withoutPrompt, null, null);
         setTimeout(() => setLocStatus('idle'), 3000);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -164,12 +163,65 @@ export default function ChatBot({ city, data, alerts }) {
   // Called when user taps "Use City Data" — answer without GPS
   const handleSkipLocation = useCallback(() => {
     setPendingQuestion(null);
-    setMessages(prev => {
-      const withoutPrompt = prev.filter(m => m.role !== 'location-prompt');
-      streamReply(withoutPrompt, null, null);
-      return withoutPrompt;
-    });
+    const withoutPrompt = messagesRef.current.filter(m => m.role !== 'location-prompt');
+    setMessages(withoutPrompt);
+    streamReply(withoutPrompt, null, null);
   }, [streamReply]);
+
+  const toggleVoice = useCallback(() => {
+    // Stop if already listening
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setError('Voice input not supported. Please use Chrome or Edge.');
+      return;
+    }
+
+    const recognition = new SR();
+    recognition.lang = 'en-IN'; // Indian English
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setListening(true);
+      setVoiceTranscript('');
+      setError(null);
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      setVoiceTranscript(transcript);
+      setInput(transcript);
+
+      // Auto-send when speech is finalised
+      if (e.results[e.results.length - 1].isFinal && transcript.trim()) {
+        recognition.stop();
+        setVoiceTranscript('');
+        setInput('');
+        sendMessage(transcript, { voice: true });
+      }
+    };
+
+    recognition.onerror = (e) => {
+      setListening(false);
+      setVoiceTranscript('');
+      if (e.error !== 'no-speech' && e.error !== 'aborted')
+        setError(`Voice error: ${e.error}. Try speaking again.`);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+      setVoiceTranscript('');
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, [listening, sendMessage]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -441,32 +493,42 @@ export default function ChatBot({ city, data, alerts }) {
                   <textarea
                     ref={inputRef}
                     rows={1}
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
+                    value={listening ? voiceTranscript : input}
+                    onChange={e => { if (!listening) setInput(e.target.value); }}
                     onKeyDown={handleKeyDown}
-                    placeholder={`Ask Kimi about ${city?.name}…`}
-                    disabled={streaming}
-                    className={`flex-1 bg-transparent text-[14px] text-primary placeholder:text-primary-muted/50 resize-none outline-none min-h-[24px] max-h-[120px] py-1 leading-[1.6] disabled:opacity-50 custom-scrollbar ${isExpanded ? 'text-[15px]' : ''}`}
+                    placeholder={listening ? '🎙 Listening… speak in English' : `Ask Kimi about ${city?.name}…`}
+                    disabled={streaming || listening}
+                    className={`flex-1 bg-transparent text-[14px] text-primary placeholder:text-primary-muted/50 resize-none outline-none min-h-[24px] max-h-[120px] py-1 leading-[1.6] disabled:opacity-50 custom-scrollbar ${isExpanded ? 'text-[15px]' : ''} ${listening ? 'placeholder:text-red-400/70' : ''}`}
                     style={{ overflowY: input.split('\n').length > 3 ? 'auto' : 'hidden' }}
                   />
 
-                  {/* GPS active indicator — only shown once location is granted */}
-                  {locStatus === 'granted' && userCoords && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                      title={`GPS active: ${userCoords.lat.toFixed(4)}°N ${userCoords.lon.toFixed(4)}°E`}
-                      className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.2)]"
-                    >
-                      <Navigation size={13} className="fill-current" />
-                    </motion.div>
-                  )}
+                  {/* Voice button */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={toggleVoice}
+                    disabled={streaming}
+                    title={listening ? 'Stop recording' : 'Speak your question'}
+                    className={`shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-30 ${isExpanded ? 'w-10 h-10' : 'w-8 h-8'} ${
+                      listening
+                        ? 'bg-red-500 shadow-[0_0_18px_rgba(239,68,68,0.7)] text-white'
+                        : 'bg-[#ffffff0f] hover:bg-[#ffffff1a] text-primary-muted hover:text-primary border border-[#ffffff10]'
+                    }`}
+                  >
+                    {listening
+                      ? <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.8 }}>
+                          <MicOff size={15} className="text-white" />
+                        </motion.div>
+                      : <Mic size={15} />
+                    }
+                  </motion.button>
 
                   {/* Send button */}
                   <motion.button
                     whileHover={!streaming && input.trim() ? { scale: 1.1, backgroundColor: '#3b82f6' } : {}}
                     whileTap={!streaming && input.trim() ? { scale: 0.9 } : {}}
                     onClick={() => sendMessage(input)}
-                    disabled={!input.trim() || streaming}
+                    disabled={!input.trim() || streaming || listening}
                     className={`shrink-0 rounded-xl bg-semantic-blue flex items-center justify-center text-white shadow-[0_2px_10px_rgba(59,130,246,0.4),inset_0_1px_rgba(255,255,255,0.2)] disabled:opacity-30 disabled:shadow-none disabled:bg-[#ffffff15] disabled:text-primary-muted transition-all duration-300 ${isExpanded ? 'w-10 h-10' : 'w-8 h-8'}`}
                   >
                     <Send size={16} className={streaming || !input.trim() ? '' : 'translate-x-[1px] translate-y-[-1px] transition-transform'} />

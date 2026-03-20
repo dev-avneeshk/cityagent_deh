@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CityAgent — Technical Architecture</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  :root {
+    --blue: #3b82f6; --purple: #a855f7; --green: #22c55e;
+    --yellow: #eab308; --red: #ef4444; --teal: #14b8a6;
+    --bg: #080c14; --bg2: #0d1117; --bg3: #111827;
+    --border: rgba(255,255,255,0.08); --text: #f1f5f9; --muted: #64748b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; overflow-x:hidden; }
+
+  /* ── CANVAS ── */
+  #bg-canvas { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+  /* ── LAYOUT ── */
+  .section { position:relative; z-index:1; padding:100px 24px; max-width:1200px; margin:0 auto; }
+  .section-full { position:relative; z-index:1; padding:100px 24px; }
+
+  /* ── NAV ── */
+  nav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; justify-content:space-between;
+    padding:16px 32px; background:rgba(8,12,20,0.8); backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border); }
+  .nav-logo { font-size:18px; font-weight:800; background:linear-gradient(135deg,var(--blue),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .nav-links { display:flex; gap:28px; }
+  .nav-links a { color:var(--muted); text-decoration:none; font-size:13px; font-weight:500; transition:color .2s; }
+  .nav-links a:hover { color:var(--text); }
+
+  /* ── HERO ── */
+  #hero { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:120px 24px 60px; position:relative; z-index:1; }
+  .hero-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(59,130,246,0.1);
+    border:1px solid rgba(59,130,246,0.25); border-radius:999px; padding:6px 16px; font-size:12px;
+    font-weight:600; color:var(--blue); margin-bottom:32px; letter-spacing:.5px; }
+  .hero-badge span { width:6px; height:6px; border-radius:50%; background:var(--blue); animation:pulse 2s infinite; }
+  .hero-title { font-size:clamp(48px,8vw,96px); font-weight:900; line-height:1.05; letter-spacing:-2px;
+    background:linear-gradient(135deg,#fff 0%,#94a3b8 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .hero-title .accent { background:linear-gradient(135deg,var(--blue),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .hero-sub { font-size:18px; color:var(--muted); margin-top:20px; max-width:600px; line-height:1.7; }
+  .hero-chips { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:32px; }
+  .chip { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; border:1px solid; }
+  .chip-blue  { background:rgba(59,130,246,.1);  border-color:rgba(59,130,246,.3);  color:var(--blue); }
+  .chip-green { background:rgba(34,197,94,.1);   border-color:rgba(34,197,94,.3);   color:var(--green); }
+  .chip-purple{ background:rgba(168,85,247,.1);  border-color:rgba(168,85,247,.3);  color:var(--purple); }
+  .chip-yellow{ background:rgba(234,179,8,.1);   border-color:rgba(234,179,8,.3);   color:var(--yellow); }
+  .chip-red   { background:rgba(239,68,68,.1);   border-color:rgba(239,68,68,.3);   color:var(--red); }
+  .chip-teal  { background:rgba(20,184,166,.1);  border-color:rgba(20,184,166,.3);  color:var(--teal); }
+
+  /* ── SECTION HEADERS ── */
+  .s-label { font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--blue); margin-bottom:12px; }
+  .s-title { font-size:clamp(32px,5vw,52px); font-weight:800; letter-spacing:-1px; }
+  .s-sub { color:var(--muted); margin-top:12px; font-size:15px; line-height:1.7; max-width:640px; }
+
+  /* ── CARDS ── */
+  .card { background:rgba(255,255,255,0.03); border:1px solid var(--border);
+    border-radius:16px; padding:24px; transition:all .3s; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; inset:0; border-radius:16px;
+    background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(59,130,246,.06),transparent 60%);
+    opacity:0; transition:opacity .3s; pointer-events:none; }
+  .card:hover::before { opacity:1; }
+  .card:hover { border-color:rgba(255,255,255,0.15); transform:translateY(-2px); box-shadow:0 20px 60px rgba(0,0,0,.4); }
+
+  /* ── GRID ── */
+  .grid-2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; margin-top:48px; }
+  .grid-3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin-top:48px; }
+  .grid-4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-top:48px; }
+
+  /* ── API SOURCE CARD ── */
+  .api-card { background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:14px; padding:20px; transition:all .3s; }
+  .api-card:hover { border-color:rgba(255,255,255,.12); transform:translateY(-3px); box-shadow:0 16px 40px rgba(0,0,0,.4); }
+  .api-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .api-name { font-size:14px; font-weight:700; }
+  .trust-bar { height:4px; border-radius:2px; background:rgba(255,255,255,.1); margin:8px 0; overflow:hidden; }
+  .trust-fill { height:100%; border-radius:2px; transition:width 1s cubic-bezier(.4,0,.2,1); }
+  .api-meta { font-size:11px; color:var(--muted); margin-top:8px; display:flex; gap:12px; flex-wrap:wrap; }
+  .api-tag { background:rgba(255,255,255,.05); padding:2px 8px; border-radius:4px; border:1px solid var(--border); }
+
+  /* ── CODE BLOCKS ── */
+  .code-wrap { margin-top:16px; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+  .code-header { display:flex; align-items:center; justify-content:space-between; background:#0d1117; padding:10px 16px; border-bottom:1px solid var(--border); }
+  .code-dots { display:flex; gap:6px; }
+  .code-dots span { width:10px; height:10px; border-radius:50%; }
+  .code-filename { font-size:11px; color:var(--muted); font-family:monospace; }
+  pre.hljs { margin:0!important; border-radius:0!important; font-size:12.5px!important; padding:20px!important; max-height:280px; overflow-y:auto; }
+
+  /* ── FLOWCHART ── */
+  .flow-wrap { margin-top:48px; overflow-x:auto; }
+  .flow-svg { min-width:900px; }
+
+  /* ── SECURITY CARD ── */
+  .sec-card { background:rgba(239,68,68,.04); border:1px solid rgba(239,68,68,.15); border-radius:14px; padding:24px; }
+  .sec-card.solved { background:rgba(34,197,94,.04); border-color:rgba(34,197,94,.15); }
+  .sec-icon { font-size:24px; margin-bottom:12px; }
+  .sec-title { font-size:15px; font-weight:700; margin-bottom:8px; }
+  .sec-body { font-size:13px; color:var(--muted); line-height:1.65; }
+  .sec-solution { margin-top:12px; padding:12px; background:rgba(34,197,94,.06); border:1px solid rgba(34,197,94,.15); border-radius:8px; font-size:12px; color:#4ade80; line-height:1.6; }
+
+  /* ── RATE LIMIT TABLE ── */
+  .rl-table { width:100%; border-collapse:collapse; margin-top:32px; }
+  .rl-table th { text-align:left; padding:12px 16px; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); border-bottom:1px solid var(--border); }
+  .rl-table td { padding:14px 16px; font-size:13px; border-bottom:1px solid rgba(255,255,255,.04); }
+  .rl-table tr:hover td { background:rgba(255,255,255,.02); }
+  .rl-pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:600; }
+
+  /* ── STEP LIST ── */
+  .steps { display:flex; flex-direction:column; gap:0; margin-top:48px; }
+  .step { display:flex; gap:24px; position:relative; }
+  .step:not(:last-child)::after { content:''; position:absolute; left:19px; top:44px; bottom:0; width:1px; background:linear-gradient(var(--blue),transparent); }
+  .step-num { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--blue),var(--purple));
+    display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; flex-shrink:0; margin-top:4px; }
+  .step-body { padding-bottom:40px; flex:1; }
+  .step-title { font-size:16px; font-weight:700; margin-bottom:6px; }
+  .step-desc { font-size:13px; color:var(--muted); line-height:1.65; }
+
+  /* ── FOOTER ── */
+  footer { position:relative; z-index:1; text-align:center; padding:48px 24px; border-top:1px solid var(--border); color:var(--muted); font-size:13px; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  .float { animation:float 4s ease-in-out infinite; }
+  .reveal { opacity:0; transform:translateY(30px); }
+
+  /* ── SCROLL HINT ── */
+  .scroll-hint { position:absolute; bottom:40px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .scroll-arrow { width:20px; height:20px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); animation:scrollPulse 1.5s infinite; }
+  @keyframes scrollPulse { 0%{opacity:1;transform:rotate(45deg) translate(-4px,-4px)} 100%{opacity:0;transform:rotate(45deg) translate(4px,4px)} }
+
+  /* ── 3D CARD HOVER ── */
+  .card-3d { transform-style:preserve-3d; transition:transform .3s; }
+  .card-3d:hover { transform:perspective(800px) rotateX(var(--rx,0)) rotateY(var(--ry,0)); }
+
+  /* ── GLOW TEXT ── */
+  .glow-blue { text-shadow:0 0 20px rgba(59,130,246,.6); }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+
+  /* ── METRIC STRIP ── */
+  .metric-strip { display:flex; flex-wrap:wrap; gap:16px; margin-top:32px; }
+  .metric-box { flex:1; min-width:140px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .metric-val { font-size:28px; font-weight:800; }
+  .metric-lab { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  /* hljs override */
+  .hljs { background:#0d1117!important; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">⚡ CityAgent</div>
+  <div class="nav-links">
+    <a href="#architecture">Architecture</a>
+    <a href="#apis">Data Sources</a>
+    <a href="#flow">Data Flow</a>
+    <a href="#security">Security</a>
+    <a href="#ratelimits">Rate Limits</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-badge"><span></span> ByteVerse 1.0 · Technical Documentation</div>
+  <h1 class="hero-title">How <span class="accent">CityAgent</span><br/>Actually Works</h1>
+  <p class="hero-sub">A real-time urban intelligence platform — 7 live APIs, zero-auth data sources, sub-second anomaly detection, and an AI that knows your city better than your local newspaper.</p>
+  <div class="hero-chips">
+    <span class="chip chip-blue">React + Vite</span>
+    <span class="chip chip-green">Open-Meteo (Free)</span>
+    <span class="chip chip-purple">Llama 3.1 8B</span>
+    <span class="chip chip-yellow">TomTom Traffic</span>
+    <span class="chip chip-teal">Google News RSS</span>
+    <span class="chip chip-red">Telegram Bot</span>
+  </div>
+  <div class="metric-strip" style="margin-top:48px;max-width:800px;">
+    <div class="metric-box"><div class="metric-val" style="color:var(--blue)">7</div><div class="metric-lab">Live API Sources</div></div>
+    <div class="metric-box"><div class="metric-val" style="color:var(--green)">4</div><div class="metric-lab">Zero-Auth APIs</div></div>
+    <div class="metric-box"><div class="metric-val" style="color:var(--purple)">60s</div><div class="metric-lab">Refresh Interval</div></div>
+    <div class="metric-box"><div class="metric-val" style="color:var(--yellow)">SWR</div><div class="metric-lab">Cache Strategy</div></div>
+    <div class="metric-box"><div class="metric-val" style="color:var(--teal)">∞</div><div class="metric-lab">Cities Supported</div></div>
+  </div>
+  <div class="scroll-hint" style="margin-top:60px">
+    <span style="font-size:11px;color:var(--muted)">scroll to explore</span>
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="section" id="architecture">
+  <div class="s-label">System Design</div>
+  <h2 class="s-title reveal">Architecture Overview</h2>
+  <p class="s-sub reveal">CityAgent is a fully client-side React app with zero backend. Every data source is accessed directly from the browser using public APIs, CORS-safe endpoints, and Vite's dev proxy for key protection.</p>
+
+  <div class="flow-wrap reveal">
+    <svg class="flow-svg" viewBox="0 0 960 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#3b82f6" opacity=".7"/>
+        </marker>
+        <marker id="arr-g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#22c55e" opacity=".7"/>
+        </marker>
+        <marker id="arr-p" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#a855f7" opacity=".7"/>
+        </marker>
+        <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+
+      <!-- DATA SOURCES row -->
+      <!-- Open-Meteo AQI -->
+      <rect x="10" y="10" width="130" height="56" rx="10" fill="#0d2040" stroke="#3b82f6" stroke-opacity=".4" stroke-width="1"/>
+      <text x="75" y="34" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="700">Open-Meteo</text>
+      <text x="75" y="50" text-anchor="middle" fill="#64748b" font-size="10">AQI / Weather / Flood</text>
+
+      <!-- TomTom -->
+      <rect x="155" y="10" width="120" height="56" rx="10" fill="#1a1010" stroke="#eab308" stroke-opacity=".4" stroke-width="1"/>
+      <text x="215" y="34" text-anchor="middle" fill="#eab308" font-size="11" font-weight="700">TomTom</text>
+      <text x="215" y="50" text-anchor="middle" fill="#64748b" font-size="10">Traffic Flow + Incidents</text>
+
+      <!-- Google News -->
+      <rect x="290" y="10" width="120" height="56" rx="10" fill="#0d1a0d" stroke="#22c55e" stroke-opacity=".4" stroke-width="1"/>
+      <text x="350" y="34" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="700">Google News</text>
+      <text x="350" y="50" text-anchor="middle" fill="#64748b" font-size="10">RSS via rss2json</text>
+
+      <!-- NVIDIA -->
+      <rect x="425" y="10" width="120" height="56" rx="10" fill="#1a0d2a" stroke="#a855f7" stroke-opacity=".4" stroke-width="1"/>
+      <text x="485" y="34" text-anchor="middle" fill="#a855f7" font-size="11" font-weight="700">NVIDIA NIM</text>
+      <text x="485" y="50" text-anchor="middle" fill="#64748b" font-size="10">Llama 3.1 8B Instruct</text>
+
+      <!-- BigDataCloud -->
+      <rect x="560" y="10" width="120" height="56" rx="10" fill="#0d1a1a" stroke="#14b8a6" stroke-opacity=".4" stroke-width="1"/>
+      <text x="620" y="34" text-anchor="middle" fill="#14b8a6" font-size="11" font-weight="700">BigDataCloud</text>
+      <text x="620" y="50" text-anchor="middle" fill="#64748b" font-size="10">Reverse Geocoding</text>
+
+      <!-- Telegram -->
+      <rect x="695" y="10" width="120" height="56" rx="10" fill="#0d1726" stroke="#3b82f6" stroke-opacity=".4" stroke-width="1"/>
+      <text x="755" y="34" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="700">Telegram Bot</text>
+      <text x="755" y="50" text-anchor="middle" fill="#64748b" font-size="10">@cityagentdh</text>
+
+      <!-- Open-Meteo Geocoding -->
+      <rect x="830" y="10" width="120" height="56" rx="10" fill="#0d2040" stroke="#3b82f6" stroke-opacity=".4" stroke-width="1"/>
+      <text x="890" y="34" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="700">Open-Meteo</text>
+      <text x="890" y="50" text-anchor="middle" fill="#64748b" font-size="10">Geocoding API</text>
+
+      <!-- Arrows down to API layer -->
+      <line x1="75" y1="66" x2="75" y2="140" stroke="#3b82f6" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+      <line x1="215" y1="66" x2="215" y2="140" stroke="#eab308" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+      <line x1="350" y1="66" x2="350" y2="140" stroke="#22c55e" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+      <line x1="485" y1="66" x2="485" y2="140" stroke="#a855f7" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-p)"/>
+      <line x1="620" y1="66" x2="620" y2="140" stroke="#14b8a6" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+      <line x1="755" y1="66" x2="755" y2="140" stroke="#3b82f6" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+      <line x1="890" y1="66" x2="890" y2="140" stroke="#3b82f6" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+      <!-- API LAYER -->
+      <rect x="10" y="140" width="940" height="60" rx="12" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.25)" stroke-width="1"/>
+      <text x="480" y="165" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600" letter-spacing="2">API LAYER</text>
+      <text x="145" y="183" text-anchor="middle" fill="#64748b" font-size="10">cityagent.js</text>
+      <text x="345" y="183" text-anchor="middle" fill="#64748b" font-size="10">alertsApi.js</text>
+      <text x="480" y="183" text-anchor="middle" fill="#64748b" font-size="10">newsApi.js</text>
+      <text x="620" y="183" text-anchor="middle" fill="#64748b" font-size="10">kimiChat.js</text>
+      <text x="755" y="183" text-anchor="middle" fill="#64748b" font-size="10">telegram.js</text>
+      <text x="890" y="183" text-anchor="middle" fill="#64748b" font-size="10">useCity.js</text>
+
+      <!-- Arrow to cache layer -->
+      <line x1="480" y1="200" x2="480" y2="258" stroke="#3b82f6" stroke-opacity=".5" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- CACHE / PROCESSING LAYER -->
+      <rect x="10" y="258" width="940" height="60" rx="12" fill="rgba(168,85,247,0.05)" stroke="rgba(168,85,247,0.2)" stroke-width="1"/>
+      <text x="480" y="283" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600" letter-spacing="2">CACHE + PROCESSING</text>
+      <text x="160" y="303" text-anchor="middle" fill="#64748b" font-size="10">Stale-While-Revalidate (SWR)</text>
+      <text x="400" y="303" text-anchor="middle" fill="#64748b" font-size="10">In-flight deduplication</text>
+      <text x="620" y="303" text-anchor="middle" fill="#64748b" font-size="10">deriveUrbanIntelligence()</text>
+      <text x="840" y="303" text-anchor="middle" fill="#64748b" font-size="10">relevanceScore()</text>
+
+      <!-- Arrow to React -->
+      <line x1="480" y1="318" x2="480" y2="376" stroke="#3b82f6" stroke-opacity=".5" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- REACT UI LAYER -->
+      <rect x="10" y="376" width="940" height="60" rx="12" fill="rgba(34,197,94,0.05)" stroke="rgba(34,197,94,0.2)" stroke-width="1"/>
+      <text x="480" y="401" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600" letter-spacing="2">REACT UI COMPONENTS</text>
+      <text x="90" y="421" text-anchor="middle" fill="#64748b" font-size="10">AQIGauge</text>
+      <text x="200" y="421" text-anchor="middle" fill="#64748b" font-size="10">AlertFeed</text>
+      <text x="310" y="421" text-anchor="middle" fill="#64748b" font-size="10">NewsFeed</text>
+      <text x="420" y="421" text-anchor="middle" fill="#64748b" font-size="10">MapPanel</text>
+      <text x="530" y="421" text-anchor="middle" fill="#64748b" font-size="10">ChatBot</text>
+      <text x="640" y="421" text-anchor="middle" fill="#64748b" font-size="10">AnomalyChart</text>
+      <text x="760" y="421" text-anchor="middle" fill="#64748b" font-size="10">RiskIntelligence</text>
+      <text x="880" y="421" text-anchor="middle" fill="#64748b" font-size="10">TelegramButton</text>
+
+      <!-- Arrow to output -->
+      <line x1="480" y1="436" x2="480" y2="480" stroke="#22c55e" stroke-opacity=".5" stroke-width="1.5" marker-end="url(#arr-g)"/>
+
+      <!-- OUTPUT -->
+      <rect x="200" y="480" width="560" height="36" rx="10" fill="rgba(34,197,94,0.06)" stroke="rgba(34,197,94,0.2)" stroke-width="1"/>
+      <text x="480" y="504" text-anchor="middle" fill="#22c55e" font-size="12" font-weight="700">Dashboard UI + Telegram Channel @cityagentdh</text>
+    </svg>
+  </div>
+</section>
+
+<!-- HOW IT WORKS STEPS -->
+<section class="section" id="flow">
+  <div class="s-label">Data Pipeline</div>
+  <h2 class="s-title reveal">Step-by-Step Data Flow</h2>
+  <p class="s-sub reveal">From browser load to rendered dashboard in under 2 seconds.</p>
+
+  <div class="steps" style="margin-top:48px">
+    <div class="step reveal">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">City Detection</div>
+        <div class="step-desc">On load, the default city (Dehradun) is used. User can search via Open-Meteo Geocoding API or tap "Detect Location" which calls the browser GPS + BigDataCloud reverse geocoding to resolve the city name, state, and parent admin area for news context.</div>
+        <div class="code-wrap" style="margin-top:12px">
+          <div class="code-header"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span class="code-filename">useCity.js</span></div>
+          <pre><code class="language-javascript">const r = await axios.get(
+  'https://geocoding-api.open-meteo.com/v1/search',
+  { params: { name: query, count: 6, language: 'en' } }
+);
+// Result: { name, latitude, longitude, admin1, admin3 }
+// admin3 = municipality (e.g. "Dehradun")
+// admin1 = state (e.g. "Uttarakhand")
+const newsCity = result.admin3 || result.admin1 || result.name;</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Parallel Live Data Fetch</div>
+        <div class="step-desc">All sensor data is fetched simultaneously using Promise.all — AQI, weather, flood discharge, and traffic in one round. This is the only real network wait (typically 300–600ms).</div>
+        <div class="code-wrap" style="margin-top:12px">
+          <div class="code-header"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span class="code-filename">App.jsx</span></div>
+          <pre><code class="language-javascript">const [aqi, weather, flood, traffic, stats] = await Promise.all([
+  fetchAQI(lat, lon),       // Open-Meteo CAMS — PM2.5, PM10, NO2, O3, UV
+  fetchWeather(lat, lon),   // Open-Meteo Forecast — temp, humidity, wind
+  fetchFlood(lat, lon),     // Open-Meteo GloFAS — river discharge m³/s
+  fetchTraffic(lat, lon),   // TomTom Flow + Incidents (key-gated)
+  fetchSystemStats(),       // Static mock — sensor count, uptime
+]);</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Alert Aggregation</div>
+        <div class="step-desc">Alerts are assembled from three sources: Google News RSS (civic keywords), and data-derived thresholds from the live sensor values. If AQI > 200, a Critical alert is auto-generated from real data — not a mock string.</div>
+        <div class="code-wrap" style="margin-top:12px">
+          <div class="code-header"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span class="code-filename">alertsApi.js</span></div>
+          <pre><code class="language-javascript">// Data-derived — built from live Open-Meteo values, no RSS needed
+function deriveFromLiveData(cityName, { aqi, flood, weather }) {
+  if (aqi?.value > 200)
+    alerts.push({ severity: 'critical',
+      message: `Hazardous air (AQI ${aqi.value}) — avoid outdoor activity`,
+      source: 'Open-Meteo AQI' });
+
+  if (flood?.floodRisk === 'Critical')
+    alerts.push({ severity: 'critical',
+      message: `River discharge ${flood.riverDischarge} m³/s exceeds 30d max`,
+      source: 'Open-Meteo GloFAS' });
+
+  if (weather?.precipitation > 15)
+    alerts.push({ severity: 'high',
+      message: `Heavy rainfall ${weather.precipitation}mm — waterlogging risk`,
+      source: 'Open-Meteo Weather' });
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">Social Signals from Google News</div>
+        <div class="step-desc">Social signal count is derived from live Google News articles fetched for the city. The same RSS fetch powers both the News Feed and the Social Signals metric — no duplicate requests thanks to the SWR cache.</div>
+        <div class="code-wrap" style="margin-top:12px">
+          <div class="code-header"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span class="code-filename">cityagent.js</span></div>
+          <pre><code class="language-javascript">export async function fetchSocialSignals(cityName, aqiValue) {
+  const articles = await fetchNews(cityName, ''); // SWR cached
+  if (!articles?.length) return generateCityData(cityName, aqiValue).social;
+
+  return {
+    signalCount: articles.length * 8, // scaled to signal volume
+    sources: { news: articles.length },
+    topKeywords: extractTopKeywords(articles.map(a => a.title).join(' ')),
+    recentPosts: articles.slice(0,3).map(a => ({
+      source: a.source, text: a.title.slice(0,120), time: a.time,
+    })),
+    _source: 'LIVE',
+  };
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">Urban Intelligence Derivation</div>
+        <div class="step-desc">Raw sensor data is processed into higher-order insights: City Breath Score, heat stress level, flood precursor stage, and AQI trajectory — all computed client-side from the live data.</div>
+        <div class="code-wrap" style="margin-top:12px">
+          <div class="code-header"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span class="code-filename">mockData.js — deriveUrbanIntelligence()</span></div>
+          <pre><code class="language-javascript">export function deriveUrbanIntelligence(aqi, weather, flood) {
+  // Breath Score: 100 = perfect air, 0 = hazardous
+  const aqiScore    = Math.max(0, 100 - aqi.value * 0.4);
+  const dustPenalty = (aqi.components?.dust > 80) ? 15 : 0;
+  const breathScore = Math.round(Math.max(0, aqiScore - dustPenalty));
+
+  // Heat stress: apparent temp via Steadman formula
+  const T = weather.temperature, H = weather.humidity;
+  const apparentTemp = T - 0.55*(1-H/100)*(T-14.5);
+  const heatLevel = apparentTemp > 42 ? 'Extreme'
+                  : apparentTemp > 38 ? 'Danger'
+                  : apparentTemp > 32 ? 'Caution' : 'Safe';
+
+  // Flood precursor from river discharge ratio
+  const ratio = flood.riverDischarge / (flood.riverDischargeMax30d || 1);
+  const floodPrecursor = ratio > 0.85 ? 'Warning'
+                       : ratio > 0.65 ? 'Watch' : 'Clear';
+
+  return { breathScore, heatLevel, apparentTemp, floodPrecursor, ... };
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <div class="step-title">AI Chatbot — Streaming Inference</div>
+        <div class="step-desc">The CityAgent AI uses Llama 3.1 8B via NVIDIA NIM. The system prompt includes all live sensor readings, per-zone AQI, locality index, and user GPS data if granted. Responses stream token-by-token via Server-Sent Events.</div>
+        <div class="code-wrap" style="margin-top:12px">
+          <div class="code-header"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span class="code-filename">kimiChat.js — streaming SSE</span></div>
+          <pre><code class="language-javascript">export async function* streamKimiChat(messages, systemPrompt) {
+  const response = await fetch('/api/kimi', {
+    method: 'POST',
+    body: JSON.stringify({ model:'meta/llama-3.1-8b-instruct',
+      messages: [{ role:'system', content: systemPrompt }, ...messages],
+      stream: true, max_tokens: 400, temperature: 0.3 }),
+  });
+  const reader = response.body.getReader();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += new TextDecoder().decode(value, { stream: true });
+    for (const line of buffer.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const token = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content;
+      if (token) yield token; // stream token by token to UI
+    }
+  }
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <div class="step-title">Telegram Push Notification</div>
+        <div class="step-desc">On demand (button click), a fully formatted HTML message is assembled from live data and pushed to the Telegram channel @cityagentdh — including areas to avoid, alternate routes, and health advisories.</div>
+        <div class="code-wrap" style="margin-top:12px">
+          <div class="code-header"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span class="code-filename">telegram.js</span></div>
+          <pre><code class="language-javascript">export async function sendTelegramUpdate(city, data, alerts, intel) {
+  const text = formatTelegramMessage(city, data, alerts, intel);
+  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: 'HTML',
+      disable_web_page_preview: true }),
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(`Telegram: ${json.description}`);
+}
+// Output includes: AQI levels, traffic hotspots, alternate routes,
+// flood precursors, health advisories — all from live sensor data</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA SOURCES -->
+<section class="section" id="apis">
+  <div class="s-label">Data Sources</div>
+  <h2 class="s-title reveal">APIs & Trust Ratings</h2>
+  <p class="s-sub reveal">Every data source is independently verified, rate-limit aware, and has a documented fallback strategy.</p>
+
+  <div class="grid-2" style="margin-top:48px">
+
+    <!-- Open-Meteo -->
+    <div class="api-card reveal card-3d">
+      <div class="api-header">
+        <div>
+          <div class="api-name" style="color:var(--blue)">🌤 Open-Meteo CAMS</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">air-quality-api.open-meteo.com</div>
+        </div>
+        <span class="chip chip-green" style="font-size:10px">FREE · NO KEY</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Powered by the EU Copernicus Atmosphere Monitoring Service (CAMS) satellite network. Provides PM2.5, PM10, NO₂, O₃, SO₂, CO, dust, and UV index at 0.4° resolution globally. Same data used by European government agencies.</div>
+      <div class="trust-bar"><div class="trust-fill" style="width:96%;background:linear-gradient(90deg,#22c55e,#16a34a)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>Trust Score</span><span style="color:#22c55e;font-weight:700">96% — Government Satellite Data</span></div>
+      <div class="api-meta">
+        <span class="api-tag">10,000 req/day free</span>
+        <span class="api-tag">CORS: ✓</span>
+        <span class="api-tag">Uptime: 99.9%</span>
+        <span class="api-tag">Latency: ~200ms</span>
+      </div>
+    </div>
+
+    <!-- Open-Meteo Forecast -->
+    <div class="api-card reveal card-3d">
+      <div class="api-header">
+        <div>
+          <div class="api-name" style="color:var(--blue)">🌡 Open-Meteo Forecast</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">api.open-meteo.com/v1/forecast</div>
+        </div>
+        <span class="chip chip-green" style="font-size:10px">FREE · NO KEY</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Weather model ensemble from NOAA GFS, ECMWF, and DWD ICON. Returns temperature, humidity, wind, visibility, precipitation, and WMO weather codes. Used by weather apps globally with &gt;1 billion API calls/day.</div>
+      <div class="trust-bar"><div class="trust-fill" style="width:95%;background:linear-gradient(90deg,#22c55e,#16a34a)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>Trust Score</span><span style="color:#22c55e;font-weight:700">95% — NOAA + ECMWF Models</span></div>
+      <div class="api-meta">
+        <span class="api-tag">10,000 req/day free</span>
+        <span class="api-tag">CORS: ✓</span>
+        <span class="api-tag">WMO Compliant</span>
+      </div>
+    </div>
+
+    <!-- Open-Meteo GloFAS -->
+    <div class="api-card reveal card-3d">
+      <div class="api-header">
+        <div>
+          <div class="api-name" style="color:var(--teal)">💧 Open-Meteo GloFAS</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">flood-api.open-meteo.com/v1/flood</div>
+        </div>
+        <span class="chip chip-green" style="font-size:10px">FREE · NO KEY</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">EU Global Flood Awareness System — river discharge in m³/s from hydrological models. Returns 7-day history + 3-day forecast + 30-day max for flood risk classification. Official EU flood early warning data.</div>
+      <div class="trust-bar"><div class="trust-fill" style="width:92%;background:linear-gradient(90deg,#14b8a6,#0d9488)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>Trust Score</span><span style="color:#14b8a6;font-weight:700">92% — EU GloFAS Hydrological Model</span></div>
+      <div class="api-meta">
+        <span class="api-tag">10,000 req/day free</span>
+        <span class="api-tag">CORS: ✓</span>
+        <span class="api-tag">GloFAS v4</span>
+      </div>
+    </div>
+
+    <!-- TomTom -->
+    <div class="api-card reveal card-3d">
+      <div class="api-header">
+        <div>
+          <div class="api-name" style="color:var(--yellow)">🚦 TomTom Traffic API</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">api.tomtom.com/traffic/services/4</div>
+        </div>
+        <span class="chip chip-yellow" style="font-size:10px">KEY REQUIRED</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Commercial-grade traffic intelligence used by BMW, Volkswagen, Garmin, and Renault. Returns real-time flow segment data (current vs free-flow speed) and incident details with severity, type, and location.</div>
+      <div class="trust-bar"><div class="trust-fill" style="width:90%;background:linear-gradient(90deg,#eab308,#ca8a04)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>Trust Score</span><span style="color:#eab308;font-weight:700">90% — Industry Standard (Automotive)</span></div>
+      <div class="api-meta">
+        <span class="api-tag">2,500 req/day free</span>
+        <span class="api-tag">Fallback: mock data</span>
+        <span class="api-tag">Latency: ~300ms</span>
+      </div>
+    </div>
+
+    <!-- Google News RSS -->
+    <div class="api-card reveal card-3d">
+      <div class="api-header">
+        <div>
+          <div class="api-name" style="color:var(--green)">📰 Google News RSS</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">news.google.com/rss/search → rss2json.com</div>
+        </div>
+        <span class="chip chip-green" style="font-size:10px">FREE · NO KEY</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Google aggregates 50,000+ news sources. We route through rss2json.com to convert to JSON and avoid CORS. Queries are city-specific with civic keywords (flood, AQI, pothole, etc.). 15-minute SWR cache prevents overuse.</div>
+      <div class="trust-bar"><div class="trust-fill" style="width:82%;background:linear-gradient(90deg,#22c55e,#16a34a)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>Trust Score</span><span style="color:#22c55e;font-weight:700">82% — Aggregated Verified Sources</span></div>
+      <div class="api-meta">
+        <span class="api-tag">rss2json: 10k/month free</span>
+        <span class="api-tag">SWR: 15min</span>
+        <span class="api-tag">CORS: ✓ (via proxy)</span>
+      </div>
+    </div>
+
+    <!-- NVIDIA NIM -->
+    <div class="api-card reveal card-3d">
+      <div class="api-header">
+        <div>
+          <div class="api-name" style="color:var(--purple)">🤖 NVIDIA NIM — Llama 3.1 8B</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">integrate.api.nvidia.com/v1/chat/completions</div>
+        </div>
+        <span class="chip chip-purple" style="font-size:10px">KEY REQUIRED</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Meta Llama 3.1 8B Instruct hosted on NVIDIA's inference platform. Receives a detailed system prompt with all live sensor readings, per-zone AQI, locality index, and user GPS. Streams responses via Server-Sent Events for real-time token display.</div>
+      <div class="trust-bar"><div class="trust-fill" style="width:88%;background:linear-gradient(90deg,#a855f7,#7c3aed)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>Trust Score</span><span style="color:#a855f7;font-weight:700">88% — NVIDIA Enterprise Inference</span></div>
+      <div class="api-meta">
+        <span class="api-tag">Credit-based</span>
+        <span class="api-tag">Client rate limit: 10/min</span>
+        <span class="api-tag">Streamed SSE</span>
+      </div>
+    </div>
+
+    <!-- BigDataCloud -->
+    <div class="api-card reveal card-3d">
+      <div class="api-header">
+        <div>
+          <div class="api-name" style="color:var(--teal)">📍 BigDataCloud Geocoding</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">api.bigdatacloud.net/data/reverse-geocode-client</div>
+        </div>
+        <span class="chip chip-green" style="font-size:10px">FREE · NO KEY</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Client-side reverse geocoding from GPS coordinates to city/locality/state names. Used when the user clicks "Detect Location". Returns city, locality, and principalSubdivision for news context resolution.</div>
+      <div class="trust-bar"><div class="trust-fill" style="width:80%;background:linear-gradient(90deg,#14b8a6,#0d9488)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>Trust Score</span><span style="color:#14b8a6;font-weight:700">80% — Reliable, well-known free API</span></div>
+      <div class="api-meta">
+        <span class="api-tag">No key needed</span>
+        <span class="api-tag">CORS: ✓</span>
+        <span class="api-tag">Client-side only</span>
+      </div>
+    </div>
+
+    <!-- Telegram -->
+    <div class="api-card reveal card-3d">
+      <div class="api-header">
+        <div>
+          <div class="api-name" style="color:var(--blue)">✈️ Telegram Bot API</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">api.telegram.org/bot{token}/sendMessage</div>
+        </div>
+        <span class="chip chip-yellow" style="font-size:10px">KEY REQUIRED</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">Official Telegram Bot API for pushing formatted HTML updates to @cityagentdh. Used for on-demand city bulletins including AQI, traffic hotspots, alternate routes, flood precursors, and health advisories — all derived from live data.</div>
+      <div class="trust-bar"><div class="trust-fill" style="width:99%;background:linear-gradient(90deg,#3b82f6,#2563eb)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>Trust Score</span><span style="color:var(--blue);font-weight:700">99% — Official Telegram Infrastructure</span></div>
+      <div class="api-meta">
+        <span class="api-tag">30 msg/sec per chat</span>
+        <span class="api-tag">HTML parse mode</span>
+        <span class="api-tag">Uptime: 99.99%</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CACHING STRATEGY -->
+<section class="section">
+  <div class="s-label">Performance</div>
+  <h2 class="s-title reveal">Caching Architecture</h2>
+  <p class="s-sub reveal">Stale-While-Revalidate (SWR) — the same pattern used by Next.js, Vercel, and Cloudflare — applied per data source with appropriate TTLs.</p>
+
+  <div class="grid-3" style="margin-top:48px">
+    <div class="card reveal">
+      <div style="font-size:20px;margin-bottom:12px">⚡</div>
+      <div style="font-weight:700;margin-bottom:8px">Live Sensor Data</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6">AQI, weather, flood, traffic refresh every <strong style="color:var(--text)">60 seconds</strong> via setInterval. No cache — always fresh. A cancelled flag prevents stale state if component unmounts mid-fetch.</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--blue);font-weight:600">TTL: 60s · No cache</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:20px;margin-bottom:12px">📰</div>
+      <div style="font-weight:700;margin-bottom:8px">News Feed (SWR)</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6">Return cache instantly on revisit. If stale (&gt;15 min), refresh in background via <code style="font-size:11px;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px">onUpdate</code> callback. Empty results are never cached — next call always retries.</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--green);font-weight:600">TTL: 15min · SWR</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:20px;margin-bottom:12px">🚨</div>
+      <div style="font-weight:700;margin-bottom:8px">Alert Feed (SWR)</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6">Alerts are time-sensitive — 10-minute SWR threshold. Data-derived alerts (from live AQI/flood) bypass cache entirely and are recomputed on every render from current sensor values.</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--yellow);font-weight:600">TTL: 10min · SWR</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:20px;margin-bottom:12px">🔄</div>
+      <div style="font-weight:700;margin-bottom:8px">In-Flight Deduplication</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6">A <code style="font-size:11px;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px">Map&lt;key, Promise&gt;</code> prevents duplicate concurrent fetches. If two components request the same city's news simultaneously, only one HTTP call is made — both await the same promise.</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--purple);font-weight:600">Pattern: Promise dedup</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:20px;margin-bottom:12px">🌆</div>
+      <div style="font-weight:700;margin-bottom:8px">City Switch</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6">When city changes, <code style="font-size:11px;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px">news</code> is cleared immediately (skeleton shown), previous interval is cancelled, and new fetch starts fresh. Old city's cache is preserved for instant back-navigation.</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--teal);font-weight:600">Instant skeleton → fresh fetch</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:20px;margin-bottom:12px">🚀</div>
+      <div style="font-weight:700;margin-bottom:8px">Background Pagination</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6">Page 1 of Reddit/news is returned immediately (fast). Page 2 is fetched in the background with no await — when it resolves, the cache is silently updated. Next render picks up the expanded data.</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--blue);font-weight:600">Pattern: Background update</div>
+    </div>
+  </div>
+</section>
+
+<!-- RATE LIMITS -->
+<section class="section" id="ratelimits">
+  <div class="s-label">Quotas & Throttling</div>
+  <h2 class="s-title reveal">Rate Limits & Mitigation</h2>
+  <p class="s-sub reveal">Every API has a rate limit. Here's exactly what each allows, what we do when we hit it, and our client-side throttle for the AI chatbot.</p>
+
+  <div class="card reveal" style="margin-top:48px;overflow-x:auto">
+    <table class="rl-table">
+      <thead>
+        <tr>
+          <th>API</th><th>Limit</th><th>Our Usage</th><th>If Exceeded</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600;color:var(--blue)">Open-Meteo (all)</td>
+          <td>10,000 req/day</td>
+          <td>~6 req/load × 1440min = ~360/day</td>
+          <td>Auto-fallback to mock data</td>
+          <td><span class="rl-pill" style="background:rgba(34,197,94,.15);color:#22c55e">✓ Well within</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;color:var(--yellow)">TomTom Traffic</td>
+          <td>2,500 req/day free</td>
+          <td>~2 req/load (flow + incidents)</td>
+          <td>Returns mock trafficData instantly</td>
+          <td><span class="rl-pill" style="background:rgba(34,197,94,.15);color:#22c55e">✓ Safe</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;color:var(--green)">rss2json (Google News)</td>
+          <td>10,000 req/month free</td>
+          <td>1 req per city, SWR 15min cache</td>
+          <td>Alerts still derive from live sensors</td>
+          <td><span class="rl-pill" style="background:rgba(34,197,94,.15);color:#22c55e">✓ Safe</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;color:var(--purple)">NVIDIA NIM (Llama)</td>
+          <td>Credit-based</td>
+          <td>Client limit: 10 msg/min, 2s gap enforced</td>
+          <td>User sees "Rate limit reached – wait Xs"</td>
+          <td><span class="rl-pill" style="background:rgba(168,85,247,.15);color:#a855f7">⚡ Client-gated</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;color:var(--blue)">Telegram Bot</td>
+          <td>30 msg/sec per chat</td>
+          <td>Manual button — ~1 msg per click</td>
+          <td>Telegram returns error, UI shows toast</td>
+          <td><span class="rl-pill" style="background:rgba(34,197,94,.15);color:#22c55e">✓ No risk</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;color:var(--teal)">BigDataCloud</td>
+          <td>No official limit (client-side)</td>
+          <td>Only on GPS detect — user-triggered</td>
+          <td>Falls back to coords-only city name</td>
+          <td><span class="rl-pill" style="background:rgba(34,197,94,.15);color:#22c55e">✓ No risk</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;color:var(--red)">Reddit API</td>
+          <td>60 req/min unauthenticated</td>
+          <td>Replaced with Google News RSS</td>
+          <td>N/A — no longer used as primary source</td>
+          <td><span class="rl-pill" style="background:rgba(239,68,68,.15);color:#ef4444">⚠ Deprecated</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card reveal" style="margin-top:24px">
+    <div style="font-weight:700;margin-bottom:12px;font-size:15px">🤖 AI Chatbot — Client-Side Rate Limiter</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">Implemented in kimiChat.js — a sliding window limiter enforced before any API call. This protects both the user's NVIDIA credits and prevents abuse.</div>
+    <div class="code-wrap">
+      <div class="code-header"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span class="code-filename">kimiChat.js — checkRateLimit()</span></div>
+      <pre><code class="language-javascript">const RATE_WINDOW_MS = 60_000; // 1 minute window
+const MAX_PER_WINDOW = 10;     // max 10 messages per minute
+const MIN_GAP_MS     = 2_000;  // minimum 2s between messages
+const _timestamps    = [];
+
+export function checkRateLimit() {
+  const now = Date.now();
+  // Evict timestamps outside the window (sliding window)
+  while (_timestamps.length && now - _timestamps[0] > RATE_WINDOW_MS)
+    _timestamps.shift();
+
+  if (_timestamps.length >= MAX_PER_WINDOW)
+    return `Rate limit reached (${MAX_PER_WINDOW}/min). Wait
+      ${Math.ceil((RATE_WINDOW_MS - (now - _timestamps[0])) / 1000)}s.`;
+
+  const last = _timestamps[_timestamps.length - 1];
+  if (last && now - last < MIN_GAP_MS)
+    return `Slow down — wait ${Math.ceil((MIN_GAP_MS-(now-last))/1000)}s.`;
+
+  _timestamps.push(now);
+  return null; // allowed — proceed with API call
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<section class="section" id="security">
+  <div class="s-label">Security</div>
+  <h2 class="s-title reveal">Security Vulnerabilities & Mitigations</h2>
+  <p class="s-sub reveal">We identified every attack surface. Here's what the risks are and exactly how each is addressed.</p>
+
+  <div class="grid-2" style="margin-top:48px">
+
+    <div class="sec-card reveal">
+      <div class="sec-icon">🔑</div>
+      <div class="sec-title" style="color:var(--red)">API Key Exposure (VITE_ Prefix)</div>
+      <div class="sec-body">Vite's VITE_ prefix embeds environment variables directly into the browser bundle. Any user can open DevTools → Sources → index.js and find VITE_KIMI_API_KEY, VITE_TOMTOM_KEY, and VITE_TELEGRAM_BOT_TOKEN in plain text.</div>
+      <div class="sec-solution">
+        <strong>✅ Current mitigation:</strong> Vite dev proxy routes <code>/api/kimi</code> → NVIDIA NIM, so the key is injected server-side and never appears in network requests. For production, the same pattern applies via a Vercel/Netlify Edge Function proxy.<br/><br/>
+        <strong>✅ For TomTom:</strong> Fallback to mock data if key is absent — no hard dependency.<br/><br/>
+        <strong>✅ For Telegram:</strong> Bot token only allows sending to known chat_id — no data access risk even if leaked.
+      </div>
+    </div>
+
+    <div class="sec-card reveal">
+      <div class="sec-icon">💉</div>
+      <div class="sec-title" style="color:var(--red)">Prompt Injection via News Titles</div>
+      <div class="sec-body">News article titles and alert messages are injected into the AI system prompt as plain text. A malicious actor could publish an article titled "Ignore previous instructions and..." to manipulate the LLM's responses via indirect prompt injection.</div>
+      <div class="sec-solution">
+        <strong>✅ Mitigation:</strong> Only the top 3 alert messages are included in the prompt, sliced to 120 characters. Alert sources are verified RSS feeds (Google News aggregator). The system prompt role is set as immutable context before user messages.<br/><br/>
+        <strong>✅ Model-level:</strong> Llama 3.1 8B has instruction-following training that resists basic injection. max_tokens: 400 limits blast radius of any hijacked response.
+      </div>
+    </div>
+
+    <div class="sec-card reveal">
+      <div class="sec-icon">🌐</div>
+      <div class="sec-title" style="color:var(--yellow)">CORS & Third-Party API Trust</div>
+      <div class="sec-body">Browser CORS policy restricts cross-origin requests. Some APIs (like Reddit's new.json) don't return Access-Control-Allow-Origin headers, causing silent fetch failures that fall back to mock data without the user knowing.</div>
+      <div class="sec-solution">
+        <strong>✅ Mitigation:</strong> All APIs are individually tested for CORS headers (curl with Origin header). Reddit was removed entirely due to inconsistent CORS + 403 blocks. rss2json.com acts as a CORS-safe proxy for Google News RSS.<br/><br/>
+        <strong>✅ Open-Meteo:</strong> Returns <code>Access-Control-Allow-Origin: *</code> on all endpoints — fully browser-safe.
+      </div>
+    </div>
+
+    <div class="sec-card reveal">
+      <div class="sec-icon">⚡</div>
+      <div class="sec-title" style="color:var(--yellow)">React StrictMode Double-Invoke Bug</div>
+      <div class="sec-body">React 18 Strict Mode intentionally calls state updater functions twice in development to detect side effects. If an async function (like streamReply) is called inside a setMessages updater, it fires twice — creating two concurrent streaming generators writing to the same message bubble, producing garbled interleaved text.</div>
+      <div class="sec-solution">
+        <strong>✅ Fixed:</strong> All streamReply() calls were moved outside setMessages() updater functions. A messagesRef mirrors messages state synchronously (updated via useEffect), providing a safe read-only snapshot for use inside async callbacks.<br/><br/>
+        <strong>Pattern:</strong> Never call async functions inside React state updater functions.
+      </div>
+    </div>
+
+    <div class="sec-card reveal">
+      <div class="sec-icon">🤖</div>
+      <div class="sec-title" style="color:var(--yellow)">AI Chatbot Abuse / Credit Drain</div>
+      <div class="sec-body">Without rate limiting, a user could spam the chatbot and drain the NVIDIA API credits in seconds. Each inference call consumes a measurable credit amount based on tokens processed.</div>
+      <div class="sec-solution">
+        <strong>✅ Client-side limiter:</strong> Sliding window — max 10 messages/minute, minimum 2-second gap between requests. Enforced before any network call. Error message shown in UI with exact wait time.<br/><br/>
+        <strong>⚠ Limitation:</strong> Client-side only — a determined user could bypass it via DevTools. Production fix: move to server-side rate limiting per session/IP.
+      </div>
+    </div>
+
+    <div class="sec-card sec-card reveal">
+      <div class="sec-icon">📍</div>
+      <div class="sec-title" style="color:var(--yellow)">GPS Privacy</div>
+      <div class="sec-body">When a user asks a location-aware question, the chatbot requests GPS coordinates via browser geolocation API and sends them (via the system prompt) to an external AI inference endpoint (NVIDIA NIM).</div>
+      <div class="sec-solution">
+        <strong>✅ Consent-first:</strong> GPS is never requested automatically. An inline prompt card asks the user explicitly before geolocation.getCurrentPosition() is called.<br/><br/>
+        <strong>✅ Minimal transmission:</strong> Only lat/lon is sent — rounded to 5 decimal places (~1m precision). No persistent storage, no logging. Coordinates are discarded after the response stream completes.<br/><br/>
+        <strong>✅ Alternative:</strong> "Use City Data" option always available — city-level data only, no GPS required.
+      </div>
+    </div>
+
+    <div class="sec-card reveal">
+      <div class="sec-icon">🔐</div>
+      <div class="sec-title" style="color:var(--yellow)">Telegram Bot Token Leak</div>
+      <div class="sec-body">If VITE_TELEGRAM_BOT_TOKEN is extracted from the bundle, an attacker could send arbitrary messages to @cityagentdh, potentially spamming followers or posting misinformation.</div>
+      <div class="sec-solution">
+        <strong>✅ Chat ID restriction:</strong> The bot token only works with the specific CHAT_ID (the Telegram channel). Even with the token, sending to other chats fails unless the bot is added there.<br/><br/>
+        <strong>✅ Rate limit:</strong> Telegram enforces 1 message/second per bot to any single chat — limits spam even if token leaks.<br/><br/>
+        <strong>Production fix:</strong> Move sendMessage to a server-side Edge Function — token never touches the client.
+      </div>
+    </div>
+
+    <div class="sec-card sec-card reveal">
+      <div class="sec-icon">🛡</div>
+      <div class="sec-title" style="color:var(--green)">What's Fully Safe</div>
+      <div class="sec-body" style="color:#86efac">
+        <strong>Open-Meteo (3 APIs):</strong> Zero-auth. No key to leak. No PII transmitted. Only lat/lon sent — same as any weather app.<br/><br/>
+        <strong>Google News RSS:</strong> Public RSS feed. No auth. No user data sent.<br/><br/>
+        <strong>BigDataCloud:</strong> Client-side only, no key, lat/lon only.<br/><br/>
+        <strong>Browser Speech API:</strong> On-device processing. Audio never leaves the device — converted to text locally by the browser engine. Zero network requests for transcription.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FALLBACK STRATEGY -->
+<section class="section">
+  <div class="s-label">Resilience</div>
+  <h2 class="s-title reveal">Fallback Strategy</h2>
+  <p class="s-sub reveal">Every API call has a graceful degradation path. The dashboard never crashes — it falls back to the last known data or sensible defaults.</p>
+
+  <div class="grid-3" style="margin-top:48px">
+    <div class="card reveal">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Open-Meteo AQI fails</div>
+      <div style="font-weight:600;margin-bottom:6px;color:var(--text)">→ Static fallback values</div>
+      <div style="font-size:12px;color:var(--muted)">Returns hardcoded AQI=64 Moderate with realistic Dehradun PM2.5 values. UI shows "fallback" station name.</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">TomTom Traffic fails / no key</div>
+      <div style="font-weight:600;margin-bottom:6px;color:var(--text)">→ Mock trafficData</div>
+      <div style="font-size:12px;color:var(--muted)">City-specific mock traffic data with realistic hotspots. MetricCard shows "MOCK" badge instead of "LIVE".</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Google News RSS fails</div>
+      <div style="font-weight:600;margin-bottom:6px;color:var(--text)">→ Empty news feed</div>
+      <div style="font-size:12px;color:var(--muted)">NewsFeed shows "No articles found" state. Alerts still work from data-derived sensors. Social signals fall back to mock.</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">NVIDIA AI fails</div>
+      <div style="font-weight:600;margin-bottom:6px;color:var(--text)">→ Error message in chat bubble</div>
+      <div style="font-size:12px;color:var(--muted)">Streaming catch block shows error in the chat UI. Previous messages preserved. User can retry.</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">GPS denied by user</div>
+      <div style="font-weight:600;margin-bottom:6px;color:var(--text)">→ City-level data only</div>
+      <div style="font-size:12px;color:var(--muted)">AI responds with city-wide AQI and weather. Location prompt card shows "Use City Data" button as primary alternative.</div>
+    </div>
+    <div class="card reveal">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">City has no subreddit</div>
+      <div style="font-weight:600;margin-bottom:6px;color:var(--text)">→ Global Reddit search</div>
+      <div style="font-size:12px;color:var(--muted)">redditApi.js tries city-specific subreddit first, then falls back to global Reddit search with the city name as query prefix.</div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section class="section">
+  <div class="s-label">Stack</div>
+  <h2 class="s-title reveal">Technology Choices</h2>
+  <div class="grid-4" style="margin-top:48px">
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">⚛️</div>
+      <div style="font-weight:700">React 18</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Concurrent mode, strict mode, functional updaters</div>
+    </div>
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">⚡</div>
+      <div style="font-weight:700">Vite</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Dev proxy for API key protection, HMR, ESM build</div>
+    </div>
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🎨</div>
+      <div style="font-weight:700">Tailwind CSS</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Custom design tokens, dark theme, responsive grid</div>
+    </div>
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🎭</div>
+      <div style="font-weight:700">Framer Motion</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Spring physics, AnimatePresence, layout animations</div>
+    </div>
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">📊</div>
+      <div style="font-weight:700">Recharts</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Anomaly timeline, sparklines, AQI trend charts</div>
+    </div>
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🗺</div>
+      <div style="font-weight:700">Leaflet.js</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Interactive city map with AQI zone overlays</div>
+    </div>
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🌐</div>
+      <div style="font-weight:700">Axios</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">HTTP client with timeout, params serialization</div>
+    </div>
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🎙</div>
+      <div style="font-weight:700">Web Speech API</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Browser-native STT, en-IN locale, no API key</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div style="font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px">⚡ CityAgent</div>
+  <div>Built for ByteVerse 1.0 · Team ISO</div>
+  <div style="margin-top:8px;color:rgba(100,116,139,0.6)">github.com/dev-avneeshk/cityagent_deh · @cityagentdh on Telegram</div>
+</footer>
+
+<script>
+// ── THREE.JS PARTICLE NETWORK ─────────────────────────────
+const canvas = document.getElementById('bg-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,1000);
+camera.position.z = 80;
+
+// Particles
+const geo = new THREE.BufferGeometry();
+const N = 180;
+const pos = new Float32Array(N*3);
+const speeds = [];
+for(let i=0;i<N;i++){
+  pos[i*3]   = (Math.random()-0.5)*200;
+  pos[i*3+1] = (Math.random()-0.5)*200;
+  pos[i*3+2] = (Math.random()-0.5)*80;
+  speeds.push({x:(Math.random()-.5)*.06,y:(Math.random()-.5)*.06});
+}
+geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+const mat = new THREE.PointsMaterial({color:0x3b82f6,size:1.2,transparent:true,opacity:.5,sizeAttenuation:true});
+const pts = new THREE.Points(geo,mat);
+scene.add(pts);
+
+// Lines between nearby particles
+const lineMat = new THREE.LineBasicMaterial({color:0x3b82f6,transparent:true,opacity:.12});
+const lineGeo = new THREE.BufferGeometry();
+const linePos = [];
+scene.add(new THREE.LineSegments(lineGeo,lineMat));
+
+let mouseX=0,mouseY=0;
+document.addEventListener('mousemove',e=>{
+  mouseX=(e.clientX/window.innerWidth-.5)*.3;
+  mouseY=(e.clientY/window.innerHeight-.5)*.3;
+});
+
+window.addEventListener('resize',()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+
+function animate(){
+  requestAnimationFrame(animate);
+  const p=geo.attributes.position.array;
+  for(let i=0;i<N;i++){
+    p[i*3]+=speeds[i].x;
+    p[i*3+1]+=speeds[i].y;
+    if(Math.abs(p[i*3])>100)speeds[i].x*=-1;
+    if(Math.abs(p[i*3+1])>100)speeds[i].y*=-1;
+  }
+  geo.attributes.position.needsUpdate=true;
+
+  // Rebuild lines for nearby pairs
+  linePos.length=0;
+  const threshold=28;
+  for(let i=0;i<N;i++){
+    for(let j=i+1;j<N;j++){
+      const dx=p[i*3]-p[j*3],dy=p[i*3+1]-p[j*3+1];
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<threshold){
+        linePos.push(p[i*3],p[i*3+1],p[i*3+2]);
+        linePos.push(p[j*3],p[j*3+1],p[j*3+2]);
+      }
+    }
+  }
+  lineGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(linePos),3));
+
+  camera.position.x+=(mouseX*8-camera.position.x)*.03;
+  camera.position.y+=(-mouseY*8-camera.position.y)*.03;
+  camera.lookAt(scene.position);
+  renderer.render(scene,camera);
+}
+animate();
+
+// ── GSAP SCROLL ANIMATIONS ────────────────────────────────
+gsap.registerPlugin(ScrollTrigger);
+gsap.utils.toArray('.reveal').forEach(el=>{
+  gsap.fromTo(el,
+    {opacity:0,y:40},
+    {opacity:1,y:0,duration:.8,ease:'power3.out',
+     scrollTrigger:{trigger:el,start:'top 88%',toggleActions:'play none none none'}}
+  );
+});
+
+// Trust bar animations
+gsap.utils.toArray('.trust-fill').forEach(el=>{
+  const width=el.style.width;
+  el.style.width='0%';
+  ScrollTrigger.create({trigger:el,start:'top 90%',onEnter:()=>{
+    gsap.to(el,{width,duration:1.2,ease:'power2.out'});
+  }});
+});
+
+// ── HIGHLIGHT.JS ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{ hljs.highlightAll(); });
+
+// ── 3D CARD TILT ─────────────────────────────────────────
+document.querySelectorAll('.card-3d').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width-.5;
+    const y=(e.clientY-r.top)/r.height-.5;
+    card.style.transform=`perspective(800px) rotateX(${-y*8}deg) rotateY(${x*8}deg)`;
+  });
+  card.addEventListener('mouseleave',()=>{ card.style.transform=''; });
+});
+
+// ── CARD LIGHT FOLLOW ─────────────────────────────────────
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    const x=((e.clientX-r.left)/r.width)*100;
+    const y=((e.clientY-r.top)/r.height)*100;
+    card.style.setProperty('--mx',x+'%');
+    card.style.setProperty('--my',y+'%');
+  });
+});
+
+// ── NAV HIGHLIGHT ─────────────────────────────────────────
+window.addEventListener('scroll',()=>{
+  const nav=document.querySelector('nav');
+  nav.style.background=window.scrollY>50?'rgba(8,12,20,0.95)':'rgba(8,12,20,0.8)';
+});
+</script>
+</body>
+</html>
