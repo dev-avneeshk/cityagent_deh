@@ -20,6 +20,7 @@ import {
 } from './api/cityagent';
 import { fetchNews } from './api/newsApi';
 import { fetchLiveAlerts } from './api/alertsApi';
+import { logCitySnapshot, logAlerts } from './api/database';
 
 function App() {
   const [data, setData] = useState(null);
@@ -73,6 +74,10 @@ function App() {
         setAlerts(liveAlerts);
         setLoading(false);
         setRefreshing(false);
+
+        // Persist to Supabase (fire-and-forget — never blocks UI)
+        logCitySnapshot(cityName, lat, lon, { aqi, weather, flood });
+        logAlerts(cityName, liveAlerts);
       }
     };
 

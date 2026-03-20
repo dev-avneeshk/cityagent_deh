@@ -3,6 +3,10 @@ import { X, Send, Bot, User, ChevronDown, Sparkles, Maximize2, Minimize2, MapPin
 import { motion, AnimatePresence } from 'framer-motion';
 import { streamKimiChat, buildCityContext, getSuggestedQuestions, checkRateLimit } from '../api/kimiChat';
 import { fetchAQI, fetchWeather } from '../api/cityagent';
+import { logChat } from '../api/database';
+
+// Unique session ID per page load — groups all messages in this browser session
+const SESSION_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 // Keywords that signal the user wants location-aware data
 const LOCATION_KEYWORDS = [
@@ -89,6 +93,11 @@ export default function ChatBot({ city, data, alerts }) {
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setStreaming(false);
+      // Log completed assistant reply (read final content from ref)
+      const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+      if (lastMsg?.role === 'assistant' && lastMsg.content) {
+        logChat(SESSION_ID, city?.name, 'assistant', lastMsg.content);
+      }
     }
   }, [city, data, alerts]);
 
@@ -113,8 +122,9 @@ export default function ChatBot({ city, data, alerts }) {
     }
 
     setMessages(history);
+    logChat(SESSION_ID, city?.name, 'user', userText);
     await streamReply(history, userCoords, userLocData, voice);
-  }, [messages, streaming, userCoords, userLocData, streamReply]);
+  }, [messages, streaming, userCoords, userLocData, streamReply, city]);
 
   // Called when user taps "Allow" on the inline location prompt
   const handleAllowLocation = useCallback(() => {

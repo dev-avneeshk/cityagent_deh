@@ -162,9 +162,11 @@
 <nav>
   <div class="nav-logo">⚡ CityAgent</div>
   <div class="nav-links">
+    <a href="#problem">Problem</a>
     <a href="#architecture">Architecture</a>
     <a href="#apis">Data Sources</a>
     <a href="#flow">Data Flow</a>
+    <a href="#database">Database</a>
     <a href="#security">Security</a>
     <a href="#ratelimits">Rate Limits</a>
   </div>
@@ -193,6 +195,67 @@
   <div class="scroll-hint" style="margin-top:60px">
     <span style="font-size:11px;color:var(--muted)">scroll to explore</span>
     <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- PROBLEM STATEMENT -->
+<section id="problem" class="section">
+  <div class="s-label">Problem Statement</div>
+  <h2 class="s-title reveal">Cities are drowning in data.<br/><span style="color:var(--blue)">Nobody is listening.</span></h2>
+  <p class="s-sub reveal" style="max-width:720px">Municipal bodies, emergency responders, and everyday citizens face the same challenge: critical urban signals — rising AQI, flash floods, traffic gridlock — are scattered across dozens of disconnected portals, updated hours late, and buried behind government logins.</p>
+
+  <div class="grid-3" style="margin-top:48px">
+    <div class="card reveal card-3d" style="border-color:rgba(239,68,68,.25)">
+      <div style="font-size:28px;margin-bottom:12px">🌫</div>
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;color:#fca5a5">No Real-Time Air Quality</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.65">India's official CPCB portal updates AQI every 4–24 hours. Residents have no way to know if their neighbourhood crossed hazardous levels in the last hour. Schools don't cancel sports. Hospitals don't pre-position staff.</p>
+    </div>
+    <div class="card reveal card-3d" style="border-color:rgba(234,179,8,.25)">
+      <div style="font-size:28px;margin-bottom:12px">🚦</div>
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;color:#fde047">Fragmented Traffic & Flood Data</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.65">Traffic jams, waterlogging, and river discharge data live on separate government portals — none of which are mobile-friendly, API-accessible, or updated faster than once a day. Emergency planning relies on spreadsheets and phone calls.</p>
+    </div>
+    <div class="card reveal card-3d" style="border-color:rgba(168,85,247,.25)">
+      <div style="font-size:28px;margin-bottom:12px">🤖</div>
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;color:#d8b4fe">No Intelligent Triage</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.65">Even when data exists, no system correlates it. A simultaneous AQI spike + rain event + traffic incident could signal industrial leakage — but no existing tool detects this pattern and alerts city officials or residents automatically.</p>
+    </div>
+  </div>
+
+  <div class="card reveal" style="margin-top:32px;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(168,85,247,.08));border-color:rgba(59,130,246,.3)">
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:var(--blue);margin-bottom:12px">OUR SOLUTION</div>
+        <h3 style="font-size:22px;font-weight:800;margin-bottom:12px">CityAgent — One Dashboard, Every Signal</h3>
+        <p style="font-size:14px;color:var(--muted);line-height:1.75">CityAgent fuses 7 live data streams — air quality, weather, hydrology, traffic, social signals, news, and AI analysis — into a single real-time dashboard. It automatically generates contextual alerts from sensor thresholds, logs everything to a PostgreSQL database, and provides a conversational AI that can answer "Is it safe to go outside right now?" with actual live data — not a generic answer.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:220px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+          <span style="font-size:13px">Live AQI, PM2.5, PM10 every 60 seconds</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0"></div>
+          <span style="font-size:13px">Automated alert severity from real thresholds</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--purple);flex-shrink:0"></div>
+          <span style="font-size:13px">AI chatbot with full city context in its prompt</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--yellow);flex-shrink:0"></div>
+          <span style="font-size:13px">All data persisted to Supabase PostgreSQL</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0"></div>
+          <span style="font-size:13px">Works for any city on Earth — no config needed</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
+          <span style="font-size:13px">Telegram alerts for critical events</span>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -977,6 +1040,223 @@ export function checkRateLimit() {
       <div style="font-size:32px;margin-bottom:8px">🎙</div>
       <div style="font-weight:700">Web Speech API</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px">Browser-native STT, en-IN locale, no API key</div>
+    </div>
+    <div class="card reveal" style="text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">🐘</div>
+      <div style="font-weight:700">Supabase</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">PostgreSQL persistence — snapshots, alerts history, chat logs</div>
+    </div>
+  </div>
+</section>
+
+<!-- DATABASE -->
+<section id="database" class="section">
+  <div class="s-label">Persistence Layer</div>
+  <h2 class="s-title reveal">Database Architecture</h2>
+  <p class="s-sub reveal">Supabase (managed PostgreSQL) stores every city snapshot, alert, and chat message. Zero backend server — the frontend writes directly via the anon key, protected by Row Level Security.</p>
+
+  <!-- Why Supabase -->
+  <div class="grid-3" style="margin-top:48px">
+    <div class="card reveal" style="border-color:rgba(34,197,94,.25)">
+      <div style="font-size:24px;margin-bottom:10px">🐘</div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px">Real PostgreSQL</h3>
+      <p style="font-size:12px;color:var(--muted);line-height:1.65">Not a NoSQL workaround. Full SQL — indexes, constraints, JOINs, aggregations. We query 30-day AQI trends with <code style="background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;font-family:monospace">SELECT AVG(aqi_value) … GROUP BY DATE_TRUNC('hour', recorded_at)</code>.</p>
+    </div>
+    <div class="card reveal" style="border-color:rgba(59,130,246,.25)">
+      <div style="font-size:24px;margin-bottom:10px">🔑</div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px">No Backend Server</h3>
+      <p style="font-size:12px;color:var(--muted);line-height:1.65">The Supabase JS client talks directly to the hosted PostgREST API. The anon key is safe to expose because Row Level Security policies allow <strong>INSERT + SELECT only</strong> — no DELETE, no UPDATE, no schema access.</p>
+    </div>
+    <div class="card reveal" style="border-color:rgba(168,85,247,.25)">
+      <div style="font-size:24px;margin-bottom:10px">♾️</div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px">Free Tier, No Card</h3>
+      <p style="font-size:12px;color:var(--muted);line-height:1.65">Supabase free tier: 500MB storage, 2GB bandwidth/month, unlimited API calls. At 60s snapshots for one city: ~43 rows/hour × 24h × 30d = ~30K rows/month — well within free limits.</p>
+    </div>
+  </div>
+
+  <!-- Tables -->
+  <div style="margin-top:48px">
+    <h3 class="reveal" style="font-size:20px;font-weight:800;margin-bottom:24px">Three Tables, Three Purposes</h3>
+    <div class="grid-3">
+
+      <div class="card reveal" style="background:rgba(59,130,246,.05);border-color:rgba(59,130,246,.2)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:18px">📡</div>
+          <div>
+            <div style="font-size:14px;font-weight:700">city_snapshots</div>
+            <div style="font-size:11px;color:var(--muted)">~1 row / 60s / city</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:12px">Live sensor readings frozen in time. Every 60-second poll writes AQI, PM2.5, temperature, humidity, wind, precipitation, flood risk, and river discharge as a single row. Used for historical trend charts, anomaly baselines, and municipal reporting.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;background:rgba(59,130,246,.1);color:var(--blue);padding:2px 7px;border-radius:4px;font-weight:600">aqi_value</span>
+          <span style="font-size:10px;background:rgba(59,130,246,.1);color:var(--blue);padding:2px 7px;border-radius:4px;font-weight:600">pm25 / pm10</span>
+          <span style="font-size:10px;background:rgba(59,130,246,.1);color:var(--blue);padding:2px 7px;border-radius:4px;font-weight:600">temperature</span>
+          <span style="font-size:10px;background:rgba(59,130,246,.1);color:var(--blue);padding:2px 7px;border-radius:4px;font-weight:600">flood_risk</span>
+          <span style="font-size:10px;background:rgba(59,130,246,.1);color:var(--blue);padding:2px 7px;border-radius:4px;font-weight:600">river_discharge</span>
+          <span style="font-size:10px;background:rgba(59,130,246,.1);color:var(--blue);padding:2px 7px;border-radius:4px;font-weight:600">recorded_at</span>
+        </div>
+      </div>
+
+      <div class="card reveal" style="background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.2)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,.15);display:flex;align-items:center;justify-content:center;font-size:18px">🚨</div>
+          <div>
+            <div style="font-size:14px;font-weight:700">alerts_history</div>
+            <div style="font-size:11px;color:var(--muted)">deduped per hour</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:12px">Every unique alert that fires gets logged once per hour (in-memory Map deduplication prevents flooding from 60s polling). Tracks severity, source, message, and timestamp. City officials can query "how many critical alerts this week?"</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;background:rgba(239,68,68,.1);color:var(--red);padding:2px 7px;border-radius:4px;font-weight:600">severity</span>
+          <span style="font-size:10px;background:rgba(239,68,68,.1);color:var(--red);padding:2px 7px;border-radius:4px;font-weight:600">message</span>
+          <span style="font-size:10px;background:rgba(239,68,68,.1);color:var(--red);padding:2px 7px;border-radius:4px;font-weight:600">source</span>
+          <span style="font-size:10px;background:rgba(239,68,68,.1);color:var(--red);padding:2px 7px;border-radius:4px;font-weight:600">triggered_at</span>
+        </div>
+      </div>
+
+      <div class="card reveal" style="background:rgba(168,85,247,.05);border-color:rgba(168,85,247,.2)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(168,85,247,.15);display:flex;align-items:center;justify-content:center;font-size:18px">💬</div>
+          <div>
+            <div style="font-size:14px;font-weight:700">chat_logs</div>
+            <div style="font-size:11px;color:var(--muted)">per message, per session</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:12px">Every user question and AI reply is stored with a session_id (UUID generated on page load) and the active city. This enables conversation analytics, AI quality monitoring, and replay of what citizens asked during a crisis event.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;background:rgba(168,85,247,.1);color:var(--purple);padding:2px 7px;border-radius:4px;font-weight:600">session_id</span>
+          <span style="font-size:10px;background:rgba(168,85,247,.1);color:var(--purple);padding:2px 7px;border-radius:4px;font-weight:600">role</span>
+          <span style="font-size:10px;background:rgba(168,85,247,.1);color:var(--purple);padding:2px 7px;border-radius:4px;font-weight:600">content</span>
+          <span style="font-size:10px;background:rgba(168,85,247,.1);color:var(--purple);padding:2px 7px;border-radius:4px;font-weight:600">city_name</span>
+          <span style="font-size:10px;background:rgba(168,85,247,.1);color:var(--purple);padding:2px 7px;border-radius:4px;font-weight:600">created_at</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SQL Schema -->
+  <div style="margin-top:40px">
+    <h3 class="reveal" style="font-size:18px;font-weight:700;margin-bottom:16px">Schema (PostgreSQL)</h3>
+    <div class="code-wrap reveal">
+      <div class="code-header">
+        <div class="code-dots"><span style="background:#ff5f56"></span><span style="background:#ffbd2e"></span><span style="background:#27c93f"></span></div>
+        <span class="code-filename">database/schema.sql</span>
+      </div>
+<pre><code class="language-sql">-- City sensor readings — one row per 60s per active city
+CREATE TABLE city_snapshots (
+  id              BIGSERIAL PRIMARY KEY,
+  city_name       TEXT NOT NULL,
+  lat             DOUBLE PRECISION,
+  lon             DOUBLE PRECISION,
+  aqi_value       INTEGER,
+  aqi_category    TEXT,
+  pm25            DOUBLE PRECISION,   -- µg/m³
+  temperature     DOUBLE PRECISION,   -- °C
+  humidity        INTEGER,            -- %
+  precipitation   DOUBLE PRECISION,   -- mm/h
+  flood_risk      TEXT,               -- Low | High | Critical
+  river_discharge DOUBLE PRECISION,   -- m³/s
+  recorded_at     TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX ON city_snapshots (city_name, recorded_at DESC);
+
+-- Alert events — deduplicated per hour in application layer
+CREATE TABLE alerts_history (
+  id           BIGSERIAL PRIMARY KEY,
+  city_name    TEXT NOT NULL,
+  severity     TEXT NOT NULL CHECK (severity IN ('critical','high','medium','low')),
+  message      TEXT NOT NULL,
+  source       TEXT,
+  triggered_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- AI chatbot conversation log
+CREATE TABLE chat_logs (
+  id          BIGSERIAL PRIMARY KEY,
+  session_id  TEXT NOT NULL,          -- UUID per page load
+  city_name   TEXT,
+  role        TEXT NOT NULL CHECK (role IN ('user','assistant')),
+  content     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Row Level Security: anon key can INSERT + SELECT, nothing else
+ALTER TABLE city_snapshots  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alerts_history  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_logs       ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon insert" ON city_snapshots FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon read"   ON city_snapshots FOR SELECT TO anon USING (true);
+CREATE POLICY "anon insert" ON alerts_history FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon insert" ON chat_logs      FOR INSERT TO anon WITH CHECK (true);</code></pre>
+    </div>
+  </div>
+
+  <!-- How data flows to DB -->
+  <div style="margin-top:40px">
+    <h3 class="reveal" style="font-size:18px;font-weight:700;margin-bottom:16px">How Data Flows to the Database</h3>
+    <div class="code-wrap reveal">
+      <div class="code-header">
+        <div class="code-dots"><span style="background:#ff5f56"></span><span style="background:#ffbd2e"></span><span style="background:#27c93f"></span></div>
+        <span class="code-filename">src/api/database.js (simplified)</span>
+      </div>
+<pre><code class="language-javascript">// Supabase client — disabled gracefully if env vars not set
+const supabase = SUPABASE_URL && SUPABASE_ANON
+  ? createClient(SUPABASE_URL, SUPABASE_ANON)
+  : null;
+
+// Called every 60s after live data loads — fire-and-forget
+export async function logCitySnapshot(cityName, lat, lon, { aqi, weather, flood }) {
+  if (!supabase) return; // silently skip when not configured
+  await supabase.from('city_snapshots').insert({
+    city_name: cityName, lat, lon,
+    aqi_value: aqi?.value,
+    pm25: aqi?.components?.pm25,
+    temperature: weather?.temperature,
+    flood_risk: flood?.floodRisk,
+    river_discharge: flood?.riverDischarge,
+  });
+}
+
+// In-memory Map prevents duplicate alert rows within 1-hour window
+const _loggedAlerts = new Map();
+export async function logAlerts(cityName, alerts) {
+  const newAlerts = alerts.filter(a => {
+    const key = `${cityName}|${a.message}`;
+    const last = _loggedAlerts.get(key);
+    if (last && Date.now() - last < 3_600_000) return false; // skip duplicate
+    _loggedAlerts.set(key, Date.now());
+    return true;
+  });
+  if (newAlerts.length) await supabase.from('alerts_history').insert(newAlerts);
+}
+
+// Logs user + assistant messages with unique session ID per page load
+const SESSION_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+export async function logChat(sessionId, cityName, role, content) {
+  await supabase.from('chat_logs').insert({ session_id, city_name, role, content });
+}</code></pre>
+    </div>
+  </div>
+
+  <!-- Integration points callout -->
+  <div class="card reveal" style="margin-top:32px;background:rgba(20,184,166,.05);border-color:rgba(20,184,166,.25)">
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:var(--teal);margin-bottom:14px">INTEGRATION POINTS</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">App.jsx — after every poll</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6"><code style="font-family:monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">logCitySnapshot()</code> + <code style="font-family:monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">logAlerts()</code> fire immediately after the 60s data fetch. They never block <code style="font-family:monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">setData()</code> — pure side effects.</div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">ChatBot.jsx — on each exchange</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6"><code style="font-family:monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">logChat()</code> is called twice per exchange: once when the user sends a message, and once in the <code style="font-family:monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">finally</code> block of <code style="font-family:monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">streamReply</code> after the full AI response is assembled.</div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Graceful degradation</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">If <code style="font-family:monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">VITE_SUPABASE_URL</code> is not set, the client is <code style="font-family:monospace;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">null</code> and every DB function returns immediately. The dashboard works identically without a database configured.</div>
+      </div>
     </div>
   </div>
 </section>
